@@ -1,3 +1,9 @@
-def t():
-    print('ok')
-t()
+global GetProductIdFromCatalog
+def t(url:str):
+    id = GetCatalogID(url) # catalog id
+    session = requests.Session()
+    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'})
+    r = session.get(f'https://www.zara.com/pl/en/category/{id}/products?ajax=true')
+    print(f'https://www.zara.com/pl/en/category/{id}/products?ajax=true',f'status {r.status_code}')
+    content = json.loads(r.content+b'xd')
+GetProductIdFromCatalog = t
