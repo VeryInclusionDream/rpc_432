@@ -3,7 +3,7 @@ def GetInfoProduct(id,type_pars,mode):
     global LOGGER,PRODUCTS,ARTICLES,PROFILE
     url =f'https://www.zara.com/pl/en/products-details?productIds={id}&ajax=true'
     session = requests.Session()
-    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'})
+    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127 Safari/537.36'})
     r = session.get(url)
     content = json.loads(r.content+b'xd')
 GetInfoProduct = t
