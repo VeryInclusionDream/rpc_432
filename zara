@@ -1,37 +1,37 @@
-global GetProductIdFromCatalog
-def t(url:str):
+    global GetProductIdFromCatalog
+    def t(url:str):
 
 
-  id = GetCatalogID(url) # catalog id
-  session = requests.Session()
-  session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'})
-  # get products from catalog
+      id = GetCatalogID(url) # catalog id
+      session = requests.Session()
+      session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'})
+      # get products from catalog
 
 
-  
-  r = session.get(f'https://www.zara.com/pl/en/category/{id}/products?ajax=true')
-  print(f'https://www.zara.com/pl/en/category/{id}/products?ajax=true',f'status {r.status_code}') 
-  
-  content = json.loads(r.content+b'xd')
-  products  = content['productGroups'][0]['elements']
+      
+      r = session.get(f'https://www.zara.com/pl/en/category/{id}/products?ajax=true')
+      print(f'https://www.zara.com/pl/en/category/{id}/products?ajax=true',f'status {r.status_code}') 
+      
+      content = json.loads(r.content+b'xd')
+      products  = content['productGroups'][0]['elements']
 
-  try: # last chanvce
-    products2 = content['productGroups'][1]['elements']
-    products += products2
-  except: pass
+      try: # last chanvce
+        products2 = content['productGroups'][1]['elements']
+        products += products2
+      except: pass
 
-  ids = []
-  
-  for i in products:
-    try:
-      for j in i['commercialComponents']:
-        product_id = j['id']
-        ids.append(str(product_id))
-    except:
-      print(i)
-      traceback.print_exc()
-      pass
-  
-  # with open('res.json','w') as f: json.dump(ids,f),f.close()
-  return ids
-GetProductIdFromCatalog = t
+      ids = []
+      
+      for i in products:
+        try:
+          for j in i['commercialComponents']:
+            product_id = j['id']
+            ids.append(str(product_id))
+        except:
+          print(i)
+          traceback.print_exc()
+          pass
+      
+      # with open('res.json','w') as f: json.dump(ids,f),f.close()
+      return ids
+    GetProductIdFromCatalog = t
