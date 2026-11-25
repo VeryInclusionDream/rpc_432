@@ -30,7 +30,7 @@ def tttt(session,p) -> dict | None:
             # print(description)
             product['description'] = ''
             product['care'] = ''
-            
+
             #?------ MATERIALS --------
             if PROFILE['type_pars'] == 'clothes':
                 outer_shell = jsonpath.find('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "OUTER SHELL")].components[*]',p)
