@@ -1,1 +1,205 @@
-print('')
+def tttt(session,p) -> dict | None:
+    """
+    Return list of created products
+    """
+    global PROFILE,CATEGORY,ARTICLES,LOGGER
+    
+    if 'name' not in p:
+        print(p)
+        raise Exception("no name found")
+
+    if p['name'] != "":
+            product = {}
+            #?------main data--------
+            product['id'] = p['id']
+            product['name'] = p['name']
+            product['article'] = str(jsonpath.find_one('$..displayReference',p).value).replace(' ','')
+            product['uniq_article'] = 'massimo_'+product['article'].replace('/','_')
+            product['brand'] = 'massimo'
+            product['type']=PROFILE['type_pars']
+            product['category']=PROFILE['category']
+            product['made_in']="Morocco"
+            #?------main data--------
+
+            if product['article'] in ARTICLES:
+                print('double article',product['article'])
+                return None
+            
+            LOGGER.info('article '+product['uniq_article']+' '+product['category'])
+            description = '. '.join([i.value for i in jsonpath.find('$.bundleProductSummaries[0].attributes[?(@.type == "DESCRIPTION")].value',p) ])+'.'
+            # print(description)
+            product['description'] = ''
+            product['care'] = ''
+
+            #?------ MATERIALS --------
+            if PROFILE['type_pars'] == 'clothes':
+                outer_shell = jsonpath.find('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "OUTER SHELL")].components[*]',p)
+                outer_shell_str = ''
+                for i in outer_shell:
+                    outer_shell_str += i.value['percentage'] + ' '+MATERIALS[i.value['material'].replace(' ','')]+';'
+                try:
+                    product['material'] = outer_shell_str[:-1]
+                except:
+                    raise Exception('Materails not found '+str(outer_shell)+' len outer shell '+str(len(outer_shell)))
+                
+                LOGGER.info('material '+str(product['material']))
+            elif PROFILE['type_pars'] == 'shoes':
+                upper_material = jsonpath.find_one('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "UPPER")].components[*]',p)
+                insole_material = jsonpath.find_one('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "SOLE")].components[*]',p)
+                sole_material = jsonpath.find_one('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "INSOLE")].components[*]',p)
+                product['upper_material'] = MATERIALS[upper_material.value['material'].replace(' ','')]
+                product['insole_material'] = MATERIALS[insole_material.value['material'].replace(' ','')]
+                product['sole_material'] = MATERIALS[sole_material.value['material'].replace(' ','')]
+            elif PROFILE['type_pars'] == 'bags':
+                material = jsonpath.find_one('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "OUTER SHELL")].components[*]',p)
+                if material == None:
+                    material = jsonpath.find_one('$..bundleProductSummaries[*].detail.compositionDetail.parts[?(@.description == "OUTER SHELL")].areas[?(@.description== "MAIN MATERIAL")].components[*]',p)
+                product['material'] =  MATERIALS[material.value['material'].replace(' ','')]
+                if product['material'] == None: 
+                    raise Exception('Materails not found '+str(material.value['material']))
+                LOGGER.info('material '+str(product['material']))
+
+                bags_sizes = jsonpath.find_one('$..bundleProductSummaries[*].detail.description',p).value.replace('cm.','').split('Width:')[-1]
+                try:
+                    bags_width,bags_height,bags_depth = bags_sizes.split('x')
+                    product['height'] = str(math.ceil( float(bags_height.replace(' ','').replace(',','.')    )))
+                    product['width'] =  str(math.ceil( float(bags_width.replace(' ','').replace(',','.')     )))
+                    product['length'] = str(math.ceil( float(bags_depth.replace(' ','').replace(',','.')     )))
+                    LOGGER.info('bags sizes '+product['uniq_article']+' '+product['height']+' '+product['width']+' '+product['length'])
+                except:
+                    LOGGER.warning('bags sizes not found '+product['uniq_article'])
+
+
+            # add shoes & bags
+            #?------ MATERIALS --------
+
+
+            #?------ozon data--------
+            product['ozon_sex_id']=PROFILE['ozon_sex_id']
+            product['ozon_description_category_id']=PROFILE['ozon_description_category_id']
+            product['ozon_type_id']=PROFILE['ozon_type_id']
+            product['standart_data']=json.load(open(f'{PROFILE["folder_path"]}/standart_data.json',encoding='utf-8'))
+            #?------ozon data--------
+
+
+            #?------ WB data-------- REQUIRED
+            product['wb_standart_data']=json.load(open(f'{PROFILE["folder_path"]}/wb_standart_data.json',encoding='utf-8'))
+            product['wb_subjectID']=PROFILE['subjectID']
+            #?------ WB data--------
+            
+            # price < oldPrice < originalPrice
+            originalPrice = [int(i) for i in jsonpath.find("$..['originalPrice']",p).values() if i != None ]   # exists every time
+            price         = [int(i) for i in jsonpath.find("$..['price']",p).values() if i != None]           # exists sometimes
+            oldPrice      = [int(i) for i in jsonpath.find("$..['oldPrice']",p).values() if i != None]        # exists every time
+            
+            # print(oldPrice)
+            oldPrice = max(oldPrice) if len(oldPrice) != 0 else max(price)
+            if len(originalPrice) > 0:
+                if  len(originalPrice) != 0: oldPrice = max(originalPrice)
+            price = max(price)
+            
+            LOGGER.info(f'PRICES in pln '+str(product['uniq_article'])+' '+str(oldPrice)+' '+str(price))
+            HandlePrice(product,price,oldPrice)
+
+            colors = jsonpath.find('$..bundleProductSummaries[*].detail.colors[*]',p)
+            xmedia = jsonpath.find('$..bundleProductSummaries[*].detail.xmedia[*]',p) # all colors
+            
+            # xmedia_dict = OrderedDict()
+            _xmedia_dict = {}
+
+
+            for i in xmedia:
+                # xmedia_dict[i.value['colorCode']] = i.value['xmediaItems'][0]
+
+                order = jsonpath.find('$.xmediaLocations[*].locations[*].mediaLocations',i.value)
+                images = jsonpath.find('$.xmediaItems[*].medias[*]',i.value)
+                
+                max_order = []
+                
+                for el in order:
+                    # print(len(list(el.value)) , len(max_order))
+                    if len(list(el.value)) > len(max_order):
+                        # print(list(el.value))
+                        max_order = list(el.value)
+
+                print('max order',max_order)
+                _images_dict = {}
+                for c in images:
+                    if c.value['clazz']!= 3:
+                        if 'url' in c.value:
+                            # _images_dict[c.value['idMedia']] = 'https://static.massimodutti.net/3/photos'+c.value['extraInfo']['url']
+                            _images_dict[c.value['idMedia']] = c.value['url']
+                            
+                
+                for c in max_order:
+                    if c in _images_dict:
+                        if i.value['colorCode'] not in _xmedia_dict: _xmedia_dict[i.value['colorCode']] = []
+                        if _images_dict[c] not in _xmedia_dict[i.value['colorCode']]:
+                            _xmedia_dict[i.value['colorCode']].append(_images_dict[c])
+
+                print('--------------------------')
+
+
+            
+            # print(_xmedia_dict)
+
+            list_colors = []
+            for c in colors:
+                sizes = []
+                links = _xmedia_dict[c.value['id']] # c.value['id'] - color_code
+                
+                try:
+                    SavePhotos(session=session,
+                            links=links,
+                            article=product['uniq_article'],
+                            color_name=c.value['name'])
+                except:
+                    LOGGER.error("save photo")
+                    traceback.print_exc()
+                    pass
+                
+                #& --------- handle sizes ------
+                if PROFILE['type_pars'] != 'bags':
+                    existing_sizes = []
+                    for s in c.value['sizes']:
+                        if s['name'] in existing_sizes: 
+                            continue
+                        ru_size = RU_SIZE[s['name']]
+                        sizes.append({
+                            'name':str(s['name']),
+                            'ru_size':str(RU_SIZE[s['name']]),
+                            'availability': 'in_stock' if s['visibilityValue']=='SHOW' else 'out_of_stock',
+                            'ozon_is_imported':False
+                        })
+                        print('ru_size',ru_size,'size',s['name'],'available',s['visibilityValue'])
+                        existing_sizes.append(s['name'])
+
+                 
+                    color = {
+                        'name':c.value['name'],
+                        'ru_color':GetRuColor(c.value['name']),
+                        'sizes':sizes
+                    }
+                # for bags & any
+                else:
+                    stock = jsonpath.find_one('$..sizes[0].visibilityValue',c.value)
+                    print('stock',stock.value)
+                    color = {
+                        'name':c.value['name'],
+                        'ru_color':GetRuColor(c.value['name']),
+                        'availability': 'in_stock' if stock.value=='SHOW' else 'out_of_stock',
+                        'ozon_is_imported':False
+                    }
+
+                list_colors.append(color)
+                
+            
+            product['colors'] = list_colors
+
+            # ----- APPEND ARTICLE --------
+            ARTICLES.append(product['article'])
+    
+            return product
+
+global HandleProduct
+HandleProduct = tttt
