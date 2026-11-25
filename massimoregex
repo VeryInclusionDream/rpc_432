@@ -30,8 +30,6 @@ def tttt(session,p) -> dict | None:
             # print(description)
             product['description'] = ''
             product['care'] = ''
-
-            LOGGER.info('ZERO dsc')
             
             #?------ MATERIALS --------
             if PROFILE['type_pars'] == 'clothes':
